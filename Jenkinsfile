@@ -2,21 +2,22 @@ pipeline {
     agent any
 
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        stage('Build') {
+        stage('Maven Build') {
             steps {
-                bat 'mvn clean package'
+                bat 'mvn clean package -DskipTests'
             }
         }
 
-        stage('Archive WAR') {
+        stage('Selenium Tests') {
             steps {
-                archiveArtifacts artifacts: 'target/*.war', fingerprint: true
+                bat 'mvn test'
             }
         }
 
@@ -25,14 +26,31 @@ pipeline {
                 bat 'docker build -t inventory-management-system:latest .'
             }
         }
+
+        stage('Docker Hub Push') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )
+                ]) {
+                    bat 'docker login -u "%DOCKER_USERNAME%" -p "%DOCKER_PASSWORD%"'
+                    bat 'docker tag inventory-management-system:latest %DOCKER_USERNAME%/inventory-management-system:latest'
+                    bat 'docker push %DOCKER_USERNAME%/inventory-management-system:latest'
+                }
+            }
+        }
     }
 
     post {
         success {
-            echo 'Inventory Management System pipeline completed successfully.'
+            echo 'Inventory Management System DevOps pipeline completed successfully!'
         }
+
         failure {
-            echo 'Pipeline failed. Check the console log.'
+            echo 'Pipeline failed. Check the Jenkins console output.'
         }
     }
 }
