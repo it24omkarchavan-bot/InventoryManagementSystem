@@ -1,0 +1,31 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: inventory-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: inventorydb
+      MYSQL_USER: inventory
+      MYSQL_PASSWORD: inventory123
+      MYSQL_ROOT_PASSWORD: root123
+    ports:
+      - "3307:3306"
+    volumes:
+      - inventory_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  webapp:
+    build: .
+    container_name: inventory-webapp
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/inventorydb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USER: inventory
+      DB_PASSWORD: inventory123
+    ports:
+      - "8081:8080"
+
+volumes:
+  inventory_data:
